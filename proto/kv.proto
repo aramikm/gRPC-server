@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package kv;
+
+// A stored value plus its server-side metadata.
+message DataEntry {
+    string id = 1;
+    string namespace = 2;
+    bytes data = 3;
+    int64 created_at_unix_ms = 4;
+    int64 updated_at_unix_ms = 5;
+    string checksum = 6; // hex-encoded sha256 of `data`
+}
+
+message PutRequest {
+    string id = 1;
+    string namespace = 2;
+    bytes data = 3;
+}
+
+message PutResponse {
+    DataEntry entry = 1;
+}
+
+message GetRequest {
+    string id = 1;
+    string namespace = 2;
+}
+
+message GetResponse {
+    bool found = 1;
+    DataEntry entry = 2;
+}
+
+message DeleteRequest {
+    string id = 1;
+    string namespace = 2;
+}
+
+message DeleteResponse {
+    bool deleted = 1;
+}
+
+// Cursor-paginated list of entries in a namespace. Entries are returned in
+// lexicographic order of their `id`. To fetch the next page, pass the
+// `next_page_token` returned by the previous response as `page_token`.
+message ListRequest {
+    string namespace = 1;
+    uint32 page_size = 2;  // 0 = server default; capped at server max
+    string page_token = 3; // empty for the first page
+}
+
+message ListResponse {
+    repeated DataEntry entries = 1;
+    string next_page_token = 2; // empty when there are no more pages
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+    enum ServingStatus {
+        UNKNOWN = 0;
+        SERVING = 1;
+        NOT_SERVING = 2;
+    }
+    ServingStatus status = 1;
+}
+
+message StatsRequest {}
+
+message StatsResponse {
+    uint64 reads_total = 1;
+    uint64 writes_total = 2;
+    uint64 deletes_total = 3;
+    uint64 list_operations_total = 4;
+}
+
+service KvService {
+    rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+    rpc List(ListRequest) returns (ListResponse);
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+    rpc GetStats(StatsRequest) returns (StatsResponse);
+}
