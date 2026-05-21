@@ -4,12 +4,14 @@ use std::path::Path;
 use serde::Deserialize;
 
 use crate::error::{Error, Result};
+use crate::KafkaConfig;
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct Config {
     pub server: ServerConfig,
     pub db: DatabaseConfig,
+    pub kafka: KafkaConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]

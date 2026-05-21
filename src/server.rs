@@ -7,13 +7,13 @@ use sha2::{Digest, Sha256};
 use tonic::{Request, Response, Status};
 
 use crate::config::ServerConfig;
-use crate::db::Database;
 use crate::error::Error;
 use crate::pb::{
     kv_service_server::KvService, DataEntry, DeleteRequest, DeleteResponse, GetRequest,
     GetResponse, HealthCheckRequest, HealthCheckResponse, ListRequest, ListResponse, PutRequest,
     PutResponse, StatsRequest, StatsResponse,
 };
+use crate::storage::Storage;
 
 /// Byte value used to separate namespace from id inside the storage key.
 /// Namespace and id are required to be valid UTF-8 strings free of this byte,
@@ -21,15 +21,15 @@ use crate::pb::{
 const KEY_SEP: u8 = 0;
 
 pub struct KvServiceImpl {
-    db: Arc<Database>,
+    storage: Arc<dyn Storage>,
     default_page_size: u32,
     max_page_size: u32,
 }
 
 impl KvServiceImpl {
-    pub fn new(db: Arc<Database>, config: &ServerConfig) -> Self {
+    pub fn new(storage: Arc<dyn Storage>, config: &ServerConfig) -> Self {
         Self {
-            db,
+            storage,
             default_page_size: config.default_page_size,
             max_page_size: config.max_page_size,
         }
@@ -95,7 +95,7 @@ impl KvService for KvServiceImpl {
         let key = KvServiceImpl::make_key(&req.namespace, &req.id)?;
 
         let now = now_unix_ms();
-        let created_at = match self.db.get(&key)? {
+        let created_at = match self.storage.get(&key).await? {
             Some(bytes) => {
                 DataEntry::decode(bytes.as_slice())
                     .map_err(Error::from)?
@@ -114,7 +114,7 @@ impl KvService for KvServiceImpl {
         };
 
         let buf = entry.encode_to_vec();
-        self.db.put(&key, &buf)?;
+        self.storage.put(&key, &buf).await?;
 
         Ok(Response::new(PutResponse { entry: Some(entry) }))
     }
@@ -122,7 +122,7 @@ impl KvService for KvServiceImpl {
     async fn get(&self, req: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
         let req = req.into_inner();
         let key = KvServiceImpl::make_key(&req.namespace, &req.id)?;
-        match self.db.get(&key)? {
+        match self.storage.get(&key).await? {
             Some(bytes) => {
                 let entry = DataEntry::decode(bytes.as_slice()).map_err(Error::from)?;
                 Ok(Response::new(GetResponse {
@@ -143,7 +143,7 @@ impl KvService for KvServiceImpl {
     ) -> Result<Response<DeleteResponse>, Status> {
         let req = req.into_inner();
         let key = KvServiceImpl::make_key(&req.namespace, &req.id)?;
-        let deleted = self.db.delete(&key)?;
+        let deleted = self.storage.delete(&key).await?;
         Ok(Response::new(DeleteResponse { deleted }))
     }
 
@@ -166,8 +166,9 @@ impl KvService for KvServiceImpl {
 
         // Fetch one extra so we can build the next page token without re-reading.
         let mut items = self
-            .db
-            .scan_prefix(&prefix, start_key.as_deref(), page_size + 1)?;
+            .storage
+            .scan_prefix(&prefix, start_key.as_deref(), page_size + 1)
+            .await?;
 
         let next_page_token = if items.len() > page_size {
             let next = items.pop().expect("len > page_size");
@@ -200,12 +201,12 @@ impl KvService for KvServiceImpl {
         &self,
         _req: Request<StatsRequest>,
     ) -> Result<Response<StatsResponse>, Status> {
-        let s = self.db.stats();
+        let stats = self.storage.stats();
         Ok(Response::new(StatsResponse {
-            reads_total: s.reads,
-            writes_total: s.writes,
-            deletes_total: s.deletes,
-            list_operations_total: s.lists,
+            reads_total: stats.reads,
+            writes_total: stats.writes,
+            deletes_total: stats.deletes,
+            list_operations_total: stats.lists,
         }))
     }
 }
@@ -255,13 +256,12 @@ mod tests {
             max_page_size: 200,
             ..Default::default()
         };
-        // Construction needs a Database, so build a fake using a temp dir.
         let tmp = tempfile::TempDir::new().unwrap();
         let db_cfg = crate::config::DatabaseConfig {
             path: tmp.path().join("rocksdb").to_string_lossy().into_owned(),
             ..Default::default()
         };
-        let db = Arc::new(Database::open(&db_cfg).unwrap());
+        let db = Arc::new(crate::RocksDbBackend::open(&db_cfg).unwrap());
         let svc = KvServiceImpl::new(db, &cfg);
 
         assert_eq!(svc.resolve_page_size(0), 50);

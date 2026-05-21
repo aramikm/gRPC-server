@@ -1,0 +1,41 @@
+# gRPC Server configuration.
+#
+# This file is the canonical config for the project. The Docker image bind-mounts
+# it at /app/config.toml (see docker-compose.yaml). For local runs the binary
+# loads it from `$CONFIG_PATH` (default: ./config.toml); if the file is absent,
+# the built-in defaults from src/config.rs / src/kafka_config.rs are used.
+#
+# Every section and key is optional — omitted values fall back to defaults.
+
+[server]
+address = "0.0.0.0:50051"
+log_level = "info"             # overridden by $RUST_LOG when set
+default_page_size = 100        # used when ListRequest.page_size == 0
+max_page_size = 1000           # ListRequest.page_size is silently capped at this
+
+[db]
+path = "./data/rocksdb"
+max_open_files = -1            # -1 = unlimited
+write_buffer_size = 67108864   # 64 MiB per-CF memtable
+compression = "snappy"         # none | snappy | lz4 | zstd
+create_if_missing = true
+
+[kafka]
+# Master switch. With `false` (or a binary built without --features kafka) the
+# server runs as pure RocksDB and ignores the rest of this section.
+enabled = true
+# Comma-separated bootstrap servers (`host:port,host:port`). `kafka:29091` is
+# the docker-compose hostname; use `localhost:9092` for host-network runs.
+bootstrap_servers = "kafka:29091"
+# Single topic, single partition (required for total ordering of Put/Delete).
+topic = "kv_entries"
+# Applied only when the topic does not yet exist; must be <= broker count.
+replication_factor = 1
+# How often the availability watcher pings Kafka. On first failure the backend
+# latches to RocksDB-only for the rest of the process lifetime.
+health_check_interval_s = 10
+# Reserved: the only drain currently runs once at startup. Not yet wired to a
+# periodic task — kept here so the schema is forward-compatible.
+drain_interval_s = 5
+# Maximum produce/fetch message size in bytes (10 MiB).
+message_max_bytes = 10485760

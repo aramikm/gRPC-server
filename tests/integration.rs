@@ -7,7 +7,7 @@ use grpcserver::{
         kv_service_client::KvServiceClient, kv_service_server::KvServiceServer, DeleteRequest,
         GetRequest, HealthCheckRequest, ListRequest, PutRequest, StatsRequest,
     },
-    Database, DatabaseConfig, KvServiceImpl, ServerConfig,
+    DatabaseConfig, KvServiceImpl, RocksDbBackend, ServerConfig,
 };
 use tempfile::TempDir;
 use tokio::time::sleep;
@@ -33,7 +33,7 @@ async fn spawn_server_with(server_config: ServerConfig) -> KvServiceClient<Chann
             path,
             ..Default::default()
         };
-        let db = Arc::new(Database::open(&db_cfg).unwrap());
+        let db = Arc::new(RocksDbBackend::open(&db_cfg).unwrap());
         let svc = KvServiceImpl::new(db, &server_config);
 
         let _ = Server::builder()

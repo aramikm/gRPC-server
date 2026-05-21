@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use grpcserver::pb::kv_service_server::KvServiceServer;
-use grpcserver::{Config, Database, KvServiceImpl, FILE_DESCRIPTOR_SET};
+use grpcserver::{Config, KvServiceImpl, StorageManager, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::EnvFilter;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,8 +14,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| EnvFilter::new(config.server.log_level.as_str()));
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
-    let db = Arc::new(Database::open(&config.db)?);
-    let service = KvServiceImpl::new(db, &config.server);
+    let storage: Arc<dyn grpcserver::Storage> = Arc::new(StorageManager::new(&config).await?);
+    let service = KvServiceImpl::new(storage, &config.server);
+
+    tracing::info!(
+        "Server started on {} with Kafka enabled={}",
+        config.server.address,
+        config.kafka.enabled
+    );
 
     let reflection = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
@@ -40,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn shutdown_signal() {
-    let shutdown_timeout = Duration::from_secs(30);
+    let shutdown_timeout = Duration::from_secs(5);
 
     let ctrl_c = async {
         let _ = tokio::signal::ctrl_c().await;

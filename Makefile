@@ -1,6 +1,6 @@
 CARGO ?= cargo
 
-.PHONY: help all build release run test test-lib test-integration bench check clippy fmt fmt-check clean docs install-tools
+.PHONY: help all build release run test test-lib test-integration bench check clippy fmt fmt-check clean docs install-tools docker-build docker-compose-up docker-compose-down docker-compose-logs docker-test docker-push
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} \
@@ -49,3 +49,26 @@ docs: ## Build and open API docs
 
 install-tools: ## Install rustfmt and clippy via rustup
 	rustup component add rustfmt clippy
+
+# Docker targets
+
+docker-build: ## Build Docker image
+	docker build -t grpcserver:latest .
+
+docker-compose-up: ## Start all services (Kafka + gRPC server) in detached mode
+	docker-compose up -d
+
+docker-compose-down: ## Stop all services
+	docker-compose down
+
+docker-compose-logs: ## View logs for all services
+	docker-compose logs -f
+
+docker-test: ## Run tests inside a Rust build container (independent of the runtime image)
+	docker run --rm -v "$(shell pwd):/app" -w /app rust:1.85-slim sh -c \
+		"apt-get update && apt-get install -y protobuf-compiler libclang-dev g++ && cargo test --features kafka"
+
+docker-push: ## Push Docker image to registry (set IMAGE_REGISTRY env var, e.g., REGISTRY=myregistry.io:5000)
+	@IMAGE_NAME=$$(echo $${IMAGE_REGISTRY}/grpcserver|sed 's|\/$$||'); \
+	docker tag grpcserver:latest $$IMAGE_NAME:latest; \
+	docker push $$IMAGE_NAME:latest

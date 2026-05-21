@@ -19,6 +19,13 @@ pub enum Error {
 
     #[error("config error: {0}")]
     Config(String),
+
+    #[cfg(feature = "kafka")]
+    #[error("kafka error: {0}")]
+    Kafka(String),
+
+    #[error("internal error: {0}")]
+    Internal(String),
 }
 
 impl From<Error> for tonic::Status {
@@ -30,6 +37,9 @@ impl From<Error> for tonic::Status {
             Error::Encode(e) => tonic::Status::internal(format!("encode: {e}")),
             Error::Decode(e) => tonic::Status::internal(format!("decode: {e}")),
             Error::Config(msg) => tonic::Status::internal(msg),
+            #[cfg(feature = "kafka")]
+            Error::Kafka(msg) => tonic::Status::unavailable(msg),
+            Error::Internal(msg) => tonic::Status::internal(msg),
         }
     }
 }
