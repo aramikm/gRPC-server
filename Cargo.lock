@@ -395,6 +395,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "grpcserver"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "hex",
+ "prost",
+ "rocksdb",
+ "serde",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "toml",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -774,27 +796,6 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
-
-[[package]]
-name = "opentest"
-version = "0.1.0"
-dependencies = [
- "base64",
- "hex",
- "prost",
- "rocksdb",
- "serde",
- "sha2",
- "tempfile",
- "thiserror",
- "tokio",
- "toml",
- "tonic",
- "tonic-build",
- "tonic-reflection",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "percent-encoding"

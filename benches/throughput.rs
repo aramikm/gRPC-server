@@ -1,6 +1,6 @@
 //! Throughput + latency benchmark for the gRPC KV service.
 //!
-//! Connects to an already-running opentest server, seeds a fixed dataset, then
+//! Connects to an already-running grpcserver, seeds a fixed dataset, then
 //! drives `Put`, `Get`, and `List` workloads from a pool of concurrent gRPC
 //! clients for a fixed wall-clock duration. Reports throughput (req/s) and
 //! latency percentiles (mean, p50, p95, p99, p99.9, max) per workload.
@@ -24,7 +24,7 @@
 
 use std::time::{Duration, Instant};
 
-use opentest::pb::{kv_service_client::KvServiceClient, GetRequest, ListRequest, PutRequest};
+use grpcserver::pb::{kv_service_client::KvServiceClient, GetRequest, ListRequest, PutRequest};
 use tonic::transport::Channel;
 
 const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:50051";
@@ -66,7 +66,7 @@ impl Args {
     }
 
     fn print(&self) {
-        println!("=== opentest throughput benchmark ===");
+        println!("=== grpcserver throughput benchmark ===");
         println!("  endpoint         {}", self.endpoint);
         println!("  namespace        {}", self.namespace);
         println!("  duration         {}s", self.duration.as_secs());
@@ -85,7 +85,7 @@ async fn connect(endpoint: &str) -> KvServiceClient<Channel> {
         Err(e) => {
             eprintln!("Failed to connect to {endpoint}: {e}");
             eprintln!();
-            eprintln!("Make sure the opentest server is running. In another shell:");
+            eprintln!("Make sure the grpcserver is running. In another shell:");
             eprintln!("    cargo run --release");
             eprintln!();
             eprintln!("Or set BENCH_ENDPOINT to the running server's URL.");
@@ -167,9 +167,18 @@ fn report(name: &str, mut latencies_ns: Vec<u64>, duration: Duration) {
     println!("  Duration       {:.2}s", duration.as_secs_f64());
     println!("  Throughput     {:.1} req/s", rps);
     println!("  Mean latency   {}", fmt_ns(mean));
-    println!("  p50 latency    {}", fmt_ns(percentile(&latencies_ns, 50.0)));
-    println!("  p95 latency    {}", fmt_ns(percentile(&latencies_ns, 95.0)));
-    println!("  p99 latency    {}", fmt_ns(percentile(&latencies_ns, 99.0)));
+    println!(
+        "  p50 latency    {}",
+        fmt_ns(percentile(&latencies_ns, 50.0))
+    );
+    println!(
+        "  p95 latency    {}",
+        fmt_ns(percentile(&latencies_ns, 95.0))
+    );
+    println!(
+        "  p99 latency    {}",
+        fmt_ns(percentile(&latencies_ns, 99.0))
+    );
     println!(
         "  p99.9 latency  {}",
         fmt_ns(percentile(&latencies_ns, 99.9))

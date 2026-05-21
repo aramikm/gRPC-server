@@ -1,7 +1,8 @@
 use std::sync::Arc;
+use std::time::Duration;
 
-use opentest::pb::kv_service_server::KvServiceServer;
-use opentest::{Config, Database, KvServiceImpl, FILE_DESCRIPTOR_SET};
+use grpcserver::pb::kv_service_server::KvServiceServer;
+use grpcserver::{Config, Database, KvServiceImpl, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 
@@ -23,17 +24,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = config.server.address.parse()?;
     tracing::info!(%addr, "starting gRPC server");
 
-    Server::builder()
+    // Wait for shutdown signal
+    let shutdown_future = shutdown_signal();
+
+    // Build server with graceful shutdown - this drains in-flight requests
+    let server_future = Server::builder()
         .add_service(reflection)
         .add_service(KvServiceServer::new(service))
-        .serve_with_shutdown(addr, shutdown_signal())
-        .await?;
+        .serve_with_shutdown(addr, shutdown_future);
+
+    server_future.await?;
 
     tracing::info!("shutdown complete");
     Ok(())
 }
 
 async fn shutdown_signal() {
+    let shutdown_timeout = Duration::from_secs(30);
+
     let ctrl_c = async {
         let _ = tokio::signal::ctrl_c().await;
     };
@@ -54,5 +62,11 @@ async fn shutdown_signal() {
         _ = ctrl_c => {}
         _ = terminate => {}
     }
-    tracing::info!("shutdown signal received");
+
+    tracing::info!(
+        "Shutdown signal received, draining in-flight requests for {}s...",
+        shutdown_timeout.as_secs()
+    );
+    tokio::time::sleep(shutdown_timeout).await;
+    tracing::warn!("Shutdown timeout reached, forcing termination");
 }

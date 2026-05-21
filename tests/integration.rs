@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine;
-use opentest::{
+use grpcserver::{
     pb::{
         kv_service_client::KvServiceClient, kv_service_server::KvServiceServer, DeleteRequest,
         GetRequest, HealthCheckRequest, ListRequest, PutRequest, StatsRequest,
@@ -344,7 +344,7 @@ async fn health_check_reports_serving() {
         .into_inner();
     assert_eq!(
         r.status,
-        opentest::pb::health_check_response::ServingStatus::Serving as i32
+        grpcserver::pb::health_check_response::ServingStatus::Serving as i32
     );
 }
 

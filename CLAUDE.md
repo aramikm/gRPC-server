@@ -15,7 +15,7 @@ Use the Makefile for everything; targets shell out to plain `cargo` commands. Im
 
 ## Architecture
 
-Single gRPC binary (`opentest`) implementing a namespaced key-value store on top of RocksDB. Library + binary split: most logic lives in `src/lib.rs` so it can be exercised from `tests/integration.rs` without going through the binary.
+Single gRPC binary (`grpcserver`) implementing a namespaced key-value store on top of RocksDB. Library + binary split: most logic lives in `src/lib.rs` so it can be exercised from `tests/integration.rs` without going through the binary.
 
 Module layout:
 

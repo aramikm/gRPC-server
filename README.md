@@ -1,4 +1,4 @@
-# opentest
+# grpcserver
 
 A high-throughput gRPC key-value service backed by RocksDB, with cursor-based pagination and gRPC reflection.
 

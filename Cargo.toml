@@ -1,5 +1,5 @@
 [package]
-name = "opentest"
+name = "grpcserver"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.74"
@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+tokio-stream = "0.1"
 tonic = "0.12"
 tonic-reflection = "0.12"
 prost = "0.13"
@@ -28,11 +29,11 @@ tonic-build = "0.12"
 tempfile = "3"
 
 [[bin]]
-name = "opentest"
+name = "grpcserver"
 path = "src/main.rs"
 
 [lib]
-name = "opentest"
+name = "grpcserver"
 path = "src/lib.rs"
 
 [[bench]]
