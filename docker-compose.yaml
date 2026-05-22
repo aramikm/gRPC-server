@@ -49,6 +49,25 @@ services:
       timeout: 5s
       retries: 10
 
+  # ============================================================
+  # Envoy gRPC-Web Proxy
+  # ============================================================
+  envoy:
+    image: envoyproxy/envoy:v1.32-latest
+    ports:
+      - "8080:8080"   # gRPC-Web endpoint for browser
+      - "9901:9901"   # Envoy admin interface (optional)
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    depends_on:
+      grpc-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9901/server_info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   rocksdb-data:
     driver: local

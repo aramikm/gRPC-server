@@ -72,3 +72,22 @@ docker-push: ## Push Docker image to registry (set IMAGE_REGISTRY env var, e.g.,
 	@IMAGE_NAME=$$(echo $${IMAGE_REGISTRY}/grpcserver|sed 's|\/$$||'); \
 	docker tag grpcserver:latest $$IMAGE_NAME:latest; \
 	docker push $$IMAGE_NAME:latest
+
+# Dashboard targets
+
+dashboard-install: ## Install dashboard dependencies
+	cd dashboard && npm install
+
+dashboard-dev: ## Start dashboard in development mode
+	cd dashboard && npm run dev
+
+dashboard-build: ## Build dashboard for production
+	cd dashboard && npm run build
+
+dashboard-start: ## Start production dashboard
+	cd dashboard && npm start
+
+all-services: ## Start all services including dashboard
+	@echo "Starting all services..."
+	@docker-compose up -d
+	@echo "Dashboard running at http://localhost:3000 (run 'make dashboard-dev' to start)"
